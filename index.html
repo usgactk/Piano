@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Neon Piano - Infinite Colors</title>
+    <title>Neon Piano & Guitar</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -24,7 +24,11 @@
             width: 360px; height: 600px; background: #0f0f1a;
             position: relative; overflow: hidden; border-radius: 20px;
             box-shadow: 0 0 40px var(--neon-color); border: 2px solid #2a2a4a;
-            transition: box-shadow 0.5s ease;
+            transition: all 0.5s ease;
+        }
+
+        #game-container.rock-mode {
+            background: #050505; border-color: #ff4757; box-shadow: 0 0 40px #ff4757;
         }
 
         #top-stats {
@@ -35,32 +39,69 @@
             backdrop-filter: blur(5px);
         }
 
+        .sound-selection-menu { display: flex; gap: 10px; margin-bottom: 30px; }
+        .sound-option { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+        .sound-btn {
+            background: rgba(255,255,255,0.1); border: 1px solid var(--neon-color);
+            color: #fff; padding: 10px 15px; border-radius: 12px; cursor: pointer;
+            font-size: 12px; transition: 0.3s; width: 80px; text-align: center;
+        }
+        .sound-btn.active { background: var(--neon-color); color: #000; box-shadow: 0 0 15px var(--neon-color); }
+        .mode-high-score { font-size: 10px; color: var(--neon-color); opacity: 0.8; }
+
         .stat-box { text-align: center; color: #fff; }
         .stat-label { font-size: 9px; color: var(--neon-color); letter-spacing: 1px; margin-bottom: 2px; }
         .stat-value { font-size: 16px; text-shadow: 0 0 10px var(--neon-color); }
 
-        .line { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--neon-color); opacity: 0.2; z-index: 1; transition: background 0.5s; }
+        #pause-btn {
+            position: absolute; top: 70px; right: 15px; z-index: 40;
+            background: rgba(255,255,255,0.1); border: 1px solid var(--neon-color);
+            color: white; width: 35px; height: 35px; border-radius: 50%;
+            cursor: pointer; display: none; font-size: 14px;
+        }
 
+        /* Çizgiler: Modlara göre pozisyon değiştirir */
+        .line { 
+            position: absolute; top: 0; bottom: 0; width: 1px; 
+            background: var(--neon-color); opacity: 0.2; z-index: 1; transition: all 0.4s; 
+        }
+
+        /* Gitar Modunda Çizgiler Tel Olur */
+        .rock-mode .line {
+            width: 3px; opacity: 1;
+            background: linear-gradient(to right, #666, #fff, #666);
+            box-shadow: 0 0 8px rgba(255,255,255,0.3);
+        }
+
+        /* Notalar / Tuşlar */
         .tile {
             position: absolute; width: 90px; height: 150px;
             background: linear-gradient(135deg, var(--accent-color) 0%, var(--secondary-color) 100%);
-            border-radius: 8px; z-index: 2; cursor: pointer;
-            box-shadow: 0 0 15px rgba(0,0,0,0.3);
-            transition: background 0.5s;
+            border-radius: 4px; z-index: 2; cursor: pointer;
+            transition: transform 0.1s;
         }
         
-        .tile.active { background: #fff !important; box-shadow: 0 0 30px #fff, 0 0 50px var(--neon-color); transform: scale(0.95); }
+        /* Gitar Modunda Notalar (Yuvarlak ve Tel Üzerinde) */
+        .rock-mode .tile {
+            width: 60px; height: 60px; border-radius: 50%;
+            background: linear-gradient(135deg, #ff4757 0%, #b33939 100%);
+            box-shadow: 0 0 20px #ff4757;
+            /* JS ile hizalama ayarlanacak */
+        }
+
+        .tile.active { 
+            background: #fff !important; 
+            box-shadow: 0 0 30px #fff, 0 0 50px var(--neon-color) !important; 
+            transform: scale(0.92);
+        }
 
         #main-score {
-            position: absolute; top: 80px; width: 100%; text-align: center;
+            position: absolute; top: 120px; width: 100%; text-align: center;
             font-size: 60px; color: #fff; text-shadow: 0 0 15px var(--neon-color);
             z-index: 10; pointer-events: none; opacity: 0.6;
         }
 
-        .particle {
-            position: absolute; width: 6px; height: 6px; border-radius: 50%;
-            pointer-events: none; z-index: 5;
-        }
+        .particle { position: absolute; width: 6px; height: 6px; border-radius: 50%; pointer-events: none; z-index: 5; }
 
         .overlay {
             position: absolute; inset: 0; background: rgba(5, 5, 15, 0.95);
@@ -68,23 +109,20 @@
             align-items: center; z-index: 100; color: #fff; text-align: center;
         }
 
-        button {
+        button.main-btn {
             padding: 16px 40px; font-size: 18px; font-weight: bold;
             background: linear-gradient(90deg, var(--accent-color) 0%, var(--secondary-color) 100%);
             border: none; color: #fff; border-radius: 50px; cursor: pointer;
             box-shadow: 0 5px 20px rgba(0,0,0,0.4);
-            transition: 0.3s; font-family: 'Montserrat', sans-serif;
+            transition: 0.3s; font-family: 'Montserrat', sans-serif; margin: 10px;
         }
 
-        #game-over-screen { display: none; z-index: 200; }
-
+        #game-over-screen, #pause-screen { display: none; z-index: 200; }
         #lvl-up-toast {
             position: absolute; width: 100%; top: 40%; text-align: center;
             color: #fff; font-size: 40px; font-weight: bold;
-            text-shadow: 0 0 20px var(--neon-color); pointer-events: none;
-            z-index: 50; opacity: 0;
+            text-shadow: 0 0 20px var(--neon-color); pointer-events: none; z-index: 50; opacity: 0;
         }
-
         @keyframes floatUp {
             0% { transform: translateY(20px); opacity: 0; }
             50% { opacity: 1; }
@@ -102,22 +140,45 @@
             <div class="stat-box"><div class="stat-label">SÜRE</div><div id="timer-val" class="stat-value">0s</div></div>
         </div>
 
+        <button id="pause-btn" onclick="pauseGame()">II</button>
         <div id="main-score">0</div>
         <div id="lvl-up-toast">SEVİYE 2</div>
 
-        <div class="line" style="left: 90px;"></div>
-        <div class="line" style="left: 180px;"></div>
-        <div class="line" style="left: 270px;"></div>
+        <div id="line-0" class="line" style="left: 90px;"></div>
+        <div id="line-1" class="line" style="left: 180px;"></div>
+        <div id="line-2" class="line" style="left: 270px;"></div>
+        <div id="line-extra" class="line" style="display:none;"></div>
 
         <div id="start-screen" class="overlay">
-            <h1 style="color: #fff; margin-bottom: 20px;">NEON PIANO</h1>
-            <button onclick="startGame()">OYUNA BAŞLA</button>
+            <h1 style="color: #fff; margin-bottom: 30px; letter-spacing: 5px;">NEON RHYTHM</h1>
+            <div class="sound-selection-menu">
+                <div class="sound-option">
+                    <div id="btn-piano" class="sound-btn active" onclick="setSound('piano')">PIANO</div>
+                    <div class="mode-high-score" id="best-piano">R: 0</div>
+                </div>
+                <div class="sound-option">
+                    <div id="btn-rock" class="sound-btn" onclick="setSound('rock')">ROCK</div>
+                    <div class="mode-high-score" id="best-rock">R: 0</div>
+                </div>
+                <div class="sound-option">
+                    <div id="btn-synth" class="sound-btn" onclick="setSound('synth')">SYNTH</div>
+                    <div class="mode-high-score" id="best-synth">R: 0</div>
+                </div>
+            </div>
+            <button class="main-btn" onclick="startGame()">OYUNA BAŞLA</button>
+        </div>
+
+        <div id="pause-screen" class="overlay">
+            <h2>DURAKLATILDI</h2>
+            <button class="main-btn" onclick="resumeGame()">DEVAM ET</button>
+            <button class="main-btn" onclick="goToMenu()" style="background: #444;">ANA MENÜ</button>
         </div>
 
         <div id="game-over-screen" class="overlay">
             <h2 style="color: #ff4757;">OYUN BİTTİ</h2>
             <div id="final-score" style="font-size: 50px; margin: 10px 0;">0</div>
-            <button onclick="restartGame()">TEKRAR DENE</button>
+            <button class="main-btn" onclick="restartGame()">TEKRAR DENE</button>
+            <button class="main-btn" onclick="goToMenu()" style="background: #444;">ANA MENÜ</button>
         </div>
     </div>
 
@@ -129,177 +190,218 @@
         const highScoreVal = document.getElementById('high-score');
         const startScreen = document.getElementById('start-screen');
         const gameOverScreen = document.getElementById('game-over-screen');
+        const pauseScreen = document.getElementById('pause-screen');
+        const pauseBtn = document.getElementById('pause-btn');
         const toast = document.getElementById('lvl-up-toast');
 
-        // Sabit ilk 6 tema
-        const baseThemes = [
-            { neon: '#a29bfe', accent: '#6a11cb', secondary: '#2575fc' },
-            { neon: '#00d2ff', accent: '#3a7bd5', secondary: '#00d2ff' },
-            { neon: '#55efc4', accent: '#00b894', secondary: '#55efc4' },
-            { neon: '#ffeaa7', accent: '#fdcb6e', secondary: '#e17055' },
-            { neon: '#ff7675', accent: '#d63031', secondary: '#ff7675' },
-            { neon: '#fd79ae', accent: '#e84393', secondary: '#fd79ae' }
-        ];
-
         let audioCtx;
-        const melody = [329.63, 293.66, 261.63, 293.66, 329.63, 329.63, 329.63, 293.66, 293.66, 293.66, 329.63, 392.00, 392.00, 329.63, 293.66, 261.63, 293.66, 329.63, 329.63, 329.63, 329.63, 293.66, 293.66, 329.63, 293.66, 261.63].map(f => f * 2);
+        let currentSoundMode = 'piano';
+        const guitarMelody = [164.81, 196.00, 220.00, 164.81, 196.00, 233.08, 220.00];
+        const pianoMelody = [329.63, 293.66, 261.63, 293.66, 329.63, 329.63, 329.63, 392.00];
         
         let score = 0, level = 1, speed = 5.5, noteIdx = 0;
-        let gameActive = false, activeTiles = [], startTime = 0, timerInterval;
+        let gameActive = false, isPaused = false, activeTiles = [], startTime = 0, elapsedTime = 0, timerInterval;
 
-        highScoreVal.innerText = localStorage.getItem('neonPianoHighScore') || 0;
-
-        function updateTheme() {
-            let theme;
-            if (level <= baseThemes.length) {
-                // İlk 6 seviye için senin listeni kullan
-                theme = baseThemes[level - 1];
-            } else {
-                // 7. seviye ve sonrası için otomatik renk üret
-                // level * 40 her seviyede renk çemberinde 40 derece kaydırır
-                const hue = (level * 40) % 360; 
-                theme = {
-                    neon: `hsl(${hue}, 80%, 75%)`,
-                    accent: `hsl(${(hue + 20) % 360}, 80%, 45%)`,
-                    secondary: `hsl(${(hue - 20) % 360}, 80%, 60%)`
-                };
-            }
-
-            document.documentElement.style.setProperty('--neon-color', theme.neon);
-            document.documentElement.style.setProperty('--accent-color', theme.accent);
-            document.documentElement.style.setProperty('--secondary-color', theme.secondary);
+        function updateBestScoresDisplay() {
+            ['piano', 'rock', 'synth'].forEach(mode => {
+                const best = localStorage.getItem('neonPiano_' + mode) || 0;
+                document.getElementById('best-' + mode).innerText = "R: " + best;
+            });
+            highScoreVal.innerText = localStorage.getItem('neonPiano_' + currentSoundMode) || 0;
         }
+        updateBestScoresDisplay();
 
-        function createParticles(x, y) {
-            const currentNeon = getComputedStyle(document.documentElement).getPropertyValue('--neon-color');
-            for (let i = 0; i < 10; i++) {
-                const p = document.createElement('div');
-                p.className = 'particle';
-                p.style.backgroundColor = currentNeon;
-                p.style.boxShadow = `0 0 10px ${currentNeon}`;
-                p.style.left = x + 'px';
-                p.style.top = y + 'px';
-                container.appendChild(p);
+        function setSound(mode) {
+            currentSoundMode = mode;
+            document.querySelectorAll('.sound-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('btn-' + mode).classList.add('active');
+            
+            const l0 = document.getElementById('line-0');
+            const l1 = document.getElementById('line-1');
+            const l2 = document.getElementById('line-2');
+            const le = document.getElementById('line-extra');
 
-                const angle = Math.random() * Math.PI * 2;
-                const dist = Math.random() * 50 + 20;
-                const tx = Math.cos(angle) * dist;
-                const ty = Math.sin(angle) * dist;
-
-                p.animate([
-                    { transform: 'translate(0, 0) scale(1)', opacity: 1 },
-                    { transform: `translate(${tx}px, ${ty}px) scale(0)`, opacity: 0 }
-                ], { duration: 600, easing: 'cubic-bezier(0, .9, .57, 1)' }).onfinish = () => p.remove();
+            if (mode === 'rock') {
+                container.classList.add('rock-mode');
+                document.documentElement.style.setProperty('--neon-color', '#ff4757');
+                // Gitar telleri: 4 tel sütun ortalarına gelir
+                l0.style.left = "45px";
+                l1.style.left = "135px";
+                l2.style.left = "225px";
+                le.style.display = "block";
+                le.style.left = "315px";
+            } else {
+                container.classList.remove('rock-mode');
+                document.documentElement.style.setProperty('--neon-color', '#a29bfe');
+                // Piyano sütunları: 3 çizgi sütun aralarına gelir
+                l0.style.left = "90px";
+                l1.style.left = "180px";
+                l2.style.left = "270px";
+                le.style.display = "none";
             }
+            
+            updateBestScoresDisplay();
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }
 
         function playNote(freq) {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            osc.type = 'triangle';
+
+            if (currentSoundMode === 'rock') {
+                osc.type = 'sawtooth';
+                const dist = audioCtx.createWaveShaper();
+                function makeDistortionCurve(amount) {
+                    let k = amount, n_samples = 44100, curve = new Float32Array(n_samples);
+                    for (let i = 0 ; i < n_samples; ++i ) {
+                        let x = i * 2 / n_samples - 1;
+                        curve[i] = ( 3 + k ) * x * 20 * Math.PI / ( 3 + k * Math.abs(x) );
+                    }
+                    return curve;
+                };
+                dist.curve = makeDistortionCurve(400);
+                osc.connect(dist); dist.connect(gain);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            } else {
+                osc.type = currentSoundMode === 'piano' ? 'triangle' : 'square';
+                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                osc.connect(gain);
+            }
+
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+            gain.connect(audioCtx.destination);
             osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
-            osc.connect(gain); gain.connect(audioCtx.destination);
-            osc.start(); osc.stop(audioCtx.currentTime + 0.4);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.6);
         }
 
         function spawnTile() {
-            if (!gameActive) return;
+            if (!gameActive || isPaused) return;
             const tile = document.createElement('div');
             tile.className = 'tile';
             const col = Math.floor(Math.random()*4);
-            tile.style.left = (col * 90) + 'px';
+            
+            if (currentSoundMode === 'rock') {
+                tile.style.left = (col * 90 + 15) + 'px'; // Tel üzerine ortala
+            } else {
+                tile.style.left = (col * 90) + 'px'; // Sütunu tam doldur
+            }
+            
             tile.style.top = '-150px';
             container.appendChild(tile);
             activeTiles.push(tile);
 
             const move = () => {
                 if (!gameActive) { tile.remove(); return; }
-                let top = parseFloat(tile.style.top);
-                tile.style.top = (top + speed) + 'px';
-
-                if (top > 600) {
-                    if (activeTiles.includes(tile)) endGame();
-                    tile.remove();
-                } else requestAnimationFrame(move);
+                if (!isPaused) {
+                    let top = parseFloat(tile.style.top);
+                    tile.style.top = (top + speed) + 'px';
+                    if (top > 600) {
+                        if (activeTiles.includes(tile)) endGame();
+                        tile.remove();
+                        return;
+                    }
+                }
+                requestAnimationFrame(move);
             };
             requestAnimationFrame(move);
 
             const handlePress = (e) => {
                 e.preventDefault();
-                if (!gameActive || tile !== activeTiles[0]) return;
-                
+                if (!gameActive || isPaused || tile !== activeTiles[0]) return;
                 activeTiles.shift();
-                playNote(melody[noteIdx % melody.length]);
-                createParticles(parseInt(tile.style.left) + 45, parseInt(tile.style.top) + 75);
                 
+                const melody = currentSoundMode === 'rock' ? guitarMelody : pianoMelody;
+                playNote(melody[noteIdx % melody.length]);
+                
+                createParticles(parseInt(tile.style.left) + (currentSoundMode === 'rock' ? 30 : 45), parseInt(tile.style.top) + 75);
                 noteIdx++; score++;
                 scoreDisplay.innerText = score;
                 tile.classList.add('active');
-
-                if (score > 0 && score % 20 === 0) updateDifficulty();
+                if (score % 20 === 0) updateDifficulty();
                 setTimeout(() => tile.remove(), 100);
             };
             tile.onmousedown = handlePress; tile.ontouchstart = handlePress;
         }
 
-        function updateDifficulty() {
-            level++;
-            // Senin hız tablon
-            if (level === 2) speed = 6.0;
-            else if (level === 3) speed = 7.0;
-            else if (level === 4) speed = 8.0;
-            else speed += 0.5;
+        function createParticles(x, y) {
+            const color = currentSoundMode === 'rock' ? '#ff4757' : getComputedStyle(document.documentElement).getPropertyValue('--neon-color');
+            for (let i = 0; i < 10; i++) {
+                const p = document.createElement('div');
+                p.className = 'particle';
+                p.style.backgroundColor = color;
+                p.style.left = x + 'px'; p.style.top = y + 'px';
+                container.appendChild(p);
+                const angle = Math.random() * Math.PI * 2;
+                const dist = Math.random() * 50;
+                p.animate([{ transform: 'scale(1)', opacity: 1 }, { transform: `translate(${Math.cos(angle)*dist}px, ${Math.sin(angle)*dist}px) scale(0)`, opacity: 0 }], { duration: 500 }).onfinish = () => p.remove();
+            }
+        }
 
+        function updateDifficulty() {
+            level++; speed += 0.5;
             levelVal.innerText = level;
-            updateTheme();
-            
             toast.innerText = "SEVİYE " + level;
             toast.classList.remove('show-toast');
-            void toast.offsetWidth; 
-            toast.classList.add('show-toast');
+            void toast.offsetWidth; toast.classList.add('show-toast');
         }
 
         function startGame() {
             startScreen.style.display = 'none';
-            gameActive = true;
-            updateTheme();
-            startTime = Date.now();
-            timerInterval = setInterval(() => {
-                if (gameActive) timerVal.innerText = Math.floor((Date.now() - startTime) / 1000) + "s";
-            }, 1000);
+            pauseBtn.style.display = 'block';
+            gameActive = true; isPaused = false;
+            startTime = Date.now() - (elapsedTime * 1000);
+            startTimer();
             loop();
         }
 
-        function restartGame() {
-            score = 0; level = 1; speed = 5.5; noteIdx = 0;
-            activeTiles = [];
-            scoreDisplay.innerText = "0";
-            levelVal.innerText = "1";
-            timerVal.innerText = "0s";
-            gameOverScreen.style.display = 'none';
-            startGame();
+        function startTimer() {
+            if(timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if (gameActive && !isPaused) {
+                    elapsedTime = Math.floor((Date.now() - startTime) / 1000);
+                    timerVal.innerText = elapsedTime + "s";
+                }
+            }, 1000);
         }
 
+        function pauseGame() { isPaused = true; pauseScreen.style.display = 'flex'; clearInterval(timerInterval); }
+        function resumeGame() { isPaused = false; pauseScreen.style.display = 'none'; startTime = Date.now() - (elapsedTime * 1000); startTimer(); }
+        
+        function goToMenu() {
+            gameActive = false; isPaused = false;
+            clearInterval(timerInterval);
+            document.querySelectorAll('.tile').forEach(t => t.remove());
+            pauseScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            startScreen.style.display = 'flex';
+            pauseBtn.style.display = 'none';
+            resetStats();
+        }
+
+        function resetStats() {
+            score = 0; level = 1; speed = 5.5; noteIdx = 0; elapsedTime = 0;
+            scoreDisplay.innerText = "0"; levelVal.innerText = "1"; timerVal.innerText = "0s";
+            activeTiles = [];
+        }
+
+        function restartGame() { resetStats(); gameOverScreen.style.display = 'none'; startGame(); }
+        
         function loop() {
             if (!gameActive) return;
-            spawnTile();
+            if (!isPaused) spawnTile();
             setTimeout(loop, Math.max(150, 850 - (speed * 50)));
         }
 
         function endGame() {
-            gameActive = false;
-            clearInterval(timerInterval);
-            if (score > (localStorage.getItem('neonPianoHighScore') || 0)) {
-                localStorage.setItem('neonPianoHighScore', score);
-                highScoreVal.innerText = score;
-            }
+            gameActive = false; pauseBtn.style.display = 'none'; clearInterval(timerInterval);
+            const key = 'neonPiano_' + currentSoundMode;
+            if (score > (localStorage.getItem(key) || 0)) localStorage.setItem(key, score);
             document.getElementById('final-score').innerText = score;
             gameOverScreen.style.display = 'flex';
-            document.querySelectorAll('.tile').forEach(t => t.remove());
         }
     </script>
 </body>
 </html>
+
